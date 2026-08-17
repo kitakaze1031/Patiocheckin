@@ -5,43 +5,58 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>練習場所チェックイン</title>
   <style>
-    body { font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; }
-    .input-area { background: #f0f0f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-    input { padding: 10px; font-size: 16px; width: 90%; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    button { padding: 10px 15px; font-size: 16px; margin: 5px 5px 5px 0; cursor: pointer; border: none; border-radius: 5px; }
+    body { font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; background-color: #fafafa;}
+    h1 { font-size: 24px; color: #333; text-align: center; }
+    .input-area { background: #fff; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .input-group { margin-bottom: 15px; }
+    .input-group label { display: block; font-size: 14px; font-weight: bold; margin-bottom: 5px; color: #555; }
+    input { padding: 12px; font-size: 16px; width: 100%; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+    .button-group { display: flex; gap: 10px; margin-top: 10px; }
+    button { flex: 1; padding: 12px 0; font-size: 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 8px; }
     .btn-toyonaka { background: #4CAF50; color: white; }
     .btn-suita { background: #2196F3; color: white; }
-    .btn-leave { background: #f44336; color: white; }
-    .campus-card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-    .campus-card h2 { margin-top: 0; font-size: 20px; }
-    ul { list-style-type: none; padding-left: 0; }
-    li { background: #eef; margin: 8px 0; padding: 10px; border-radius: 6px; line-height: 1.4; }
-    .memo-text { font-size: 14px; color: #555; display: block; margin-top: 4px; }
+    .btn-leave { background: #f44336; color: white; width: 100%; margin-top: 10px; }
+    button:active { opacity: 0.8; transform: translateY(2px); }
+    
+    .campus-card { background: #fff; border-left: 5px solid #ddd; padding: 15px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+    .card-toyonaka { border-left-color: #4CAF50; }
+    .card-suita { border-left-color: #2196F3; }
+    .campus-card h2 { margin-top: 0; font-size: 18px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    ul { list-style-type: none; padding-left: 0; margin: 0; }
+    li { background: #f9f9f9; margin: 8px 0 0; padding: 12px; border-radius: 6px; line-height: 1.4; display: flex; flex-direction: column; }
+    .name-time-row { display: flex; justify-content: space-between; align-items: baseline; }
+    .member-name { font-weight: bold; font-size: 16px; color: #222; }
     .time-text { font-size: 12px; color: #888; }
+    .memo-text { font-size: 14px; color: #555; margin-top: 6px; background: #eef; padding: 6px 10px; border-radius: 4px; display: inline-block; }
   </style>
 </head>
 <body>
   <h1>📍 練習場所チェックイン</h1>
   
   <div class="input-area">
-    <p style="margin-top:0; font-weight:bold;">チェックイン情報</p>
-    <input type="text" id="username" placeholder="名前 (例: 阪大 太郎)">
-    <input type="text" id="usermemo" placeholder="メモ (例: 18時まで練習、ドラム)">
+    <div class="input-group">
+      <label for="username">👤 あなたの名前</label>
+      <input type="text" id="username" placeholder="例: 阪大 太郎">
+    </div>
+    <div class="input-group">
+      <label for="usermemo">💬 ひとことメモ（任意）</label>
+      <input type="text" id="usermemo" placeholder="例: 18時までいます！ / ベース持ってます">
+    </div>
     
-    <div>
+    <div class="button-group">
       <button class="btn-toyonaka" id="btn-toyonaka">豊中に来た</button>
       <button class="btn-suita" id="btn-suita">吹田に来た</button>
-      <button class="btn-leave" id="btn-leave">帰る</button>
     </div>
+    <button class="btn-leave" id="btn-leave">帰る</button>
   </div>
 
-  <div class="campus-card">
-    <h2>豊中キャンパス（現在 <span id="count-toyonaka">0</span> 人）</h2>
+  <div class="campus-card card-toyonaka">
+    <h2>豊中キャンパス（<span id="count-toyonaka">0</span>人）</h2>
     <ul id="list-toyonaka"></ul>
   </div>
 
-  <div class="campus-card">
-    <h2>吹田キャンパス（現在 <span id="count-suita">0</span> 人）</h2>
+  <div class="campus-card card-suita">
+    <h2>吹田キャンパス（<span id="count-suita">0</span>人）</h2>
     <ul id="list-suita"></ul>
   </div>
 
@@ -49,6 +64,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getFirestore, collection, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
+    // Firebase設定
     const firebaseConfig = {
       apiKey: "AIzaSyAbb-HSEJp1LHNli-4xFzslP9CScw5KNuA",
       authDomain: "patiocheckin-b3859.firebaseapp.com",
@@ -64,38 +80,53 @@
 
     const nameInput = document.getElementById('username');
     const memoInput = document.getElementById('usermemo');
-    const btnToyonaka = document.getElementById('btn-toyonaka');
-    const btnSuita = document.getElementById('btn-suita');
-    const btnLeave = document.getElementById('btn-leave');
 
-    // チェックイン・チェックアウト処理
+    // ★便利機能：前回入力した名前を復元する
+    const savedName = localStorage.getItem('checkin_username');
+    if(savedName) {
+      nameInput.value = savedName;
+    }
+
+    // 更新処理
     async function updateStatus(location) {
       const name = nameInput.value.trim();
       const memo = memoInput.value.trim();
 
-      if (!name) { alert("名前を入力してください！"); return; }
+      if (!name) { 
+        alert("名前を入力してください！"); 
+        return; 
+      }
       
-      await setDoc(doc(db, "members", name), {
-        name: name,
-        memo: memo, // メモ情報も保存
-        location: location,
-        updatedAt: new Date().toISOString()
-      });
+      // ★便利機能：名前をブラウザに保存する
+      localStorage.setItem('checkin_username', name);
       
-      if(location === 'none') {
-        memoInput.value = ''; // 帰るボタンを押したときはメモをクリア
+      try {
+        await setDoc(doc(db, "members", name), {
+          name: name,
+          memo: memo,
+          location: location,
+          updatedAt: new Date().toISOString()
+        });
+        
+        // 処理成功後、入力欄のメモだけをクリアする（名前は残す）
+        memoInput.value = '';
+        
+      } catch (error) {
+        console.error("エラーが発生しました: ", error);
+        alert("データの保存に失敗しました。Firebaseのルール設定を確認してください。");
       }
     }
 
-    btnToyonaka.addEventListener('click', () => updateStatus('toyonaka'));
-    btnSuita.addEventListener('click', () => updateStatus('suita'));
-    btnLeave.addEventListener('click', () => updateStatus('none'));
+    document.getElementById('btn-toyonaka').addEventListener('click', () => updateStatus('toyonaka'));
+    document.getElementById('btn-suita').addEventListener('click', () => updateStatus('suita'));
+    document.getElementById('btn-leave').addEventListener('click', () => updateStatus('none'));
 
-    // リアルタイム更新＆表示処理
+    // リアルタイム表示処理
     onSnapshot(collection(db, "members"), (snapshot) => {
       const listToyonaka = document.getElementById('list-toyonaka');
       const listSuita = document.getElementById('list-suita');
-      listToyonaka.innerHTML = ''; listSuita.innerHTML = '';
+      listToyonaka.innerHTML = ''; 
+      listSuita.innerHTML = '';
       
       let tCount = 0, sCount = 0;
 
@@ -106,17 +137,24 @@
         const data = doc.data();
         const updatedAt = new Date(data.updatedAt);
 
-        // 0時リセット処理（今日の0時より前のデータは表示しない）
+        // 0時リセット：今日の0時より前のデータは無視
         if (updatedAt < todayZero) return;
 
         const timeString = `${updatedAt.getHours()}:${String(updatedAt.getMinutes()).padStart(2, '0')}`;
         
-        // リスト項目のデザイン組み立て
         const li = document.createElement('li');
-        let htmlContent = `<strong>${data.name}</strong> <span class="time-text">(${timeString}更新)</span>`;
+        
+        // メモがある場合とない場合で表示を分ける
+        let htmlContent = `
+          <div class="name-time-row">
+            <span class="member-name">${data.name}</span>
+            <span class="time-text">${timeString} 更新</span>
+          </div>
+        `;
         if (data.memo) {
-          htmlContent += `<span class="memo-text">💬 ${data.memo}</span>`;
+          htmlContent += `<div class="memo-text">${data.memo}</div>`;
         }
+        
         li.innerHTML = htmlContent;
 
         if (data.location === 'toyonaka') {
