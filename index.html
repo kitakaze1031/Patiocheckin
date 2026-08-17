@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>練習場所チェックイン</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; }
+    .input-area { background: #f0f0f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    input { padding: 8px; font-size: 16px; width: 80%; }
+    button { padding: 10px 15px; font-size: 16px; margin: 5px; cursor: pointer; border: none; border-radius: 5px; }
+    .btn-toyonaka { background: #4CAF50; color: white; }
+    .btn-suita { background: #2196F3; color: white; }
+    .btn-leave { background: #f44336; color: white; }
+    .campus-card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+    .campus-card h2 { margin-top: 0; font-size: 20px; }
+    ul { list-style-type: none; padding-left: 0; }
+    li { background: #eef; margin: 5px 0; padding: 8px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>📍 練習場所チェックイン</h1>
+  
+  <div class="input-area">
+    <p>あなたの名前を入力してください</p>
+    <input type="text" id="username" placeholder="例: 阪大 太郎">
+    
+    <div style="margin-top: 15px;">
+      <button class="btn-toyonaka" id="btn-toyonaka">豊中に来た</button>
+      <button class="btn-suita" id="btn-suita">吹田に来た</button>
+      <button class="btn-leave" id="btn-leave">帰る</button>
+    </div>
+  </div>
+
+  <div class="campus-card">
+    <h2>豊中キャンパス（現在 <span id="count-toyonaka">0</span> 人）</h2>
+    <ul id="list-toyonaka"></ul>
+  </div>
+
+  <div class="campus-card">
+    <h2>吹田キャンパス（現在 <span id="count-suita">0</span> 人）</h2>
+    <ul id="list-suita"></ul>
+  </div>
+
+  <!-- Firebaseを読み込むスクリプト -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getFirestore, collection, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    // ★★★ここにFirebaseの「firebaseConfig」を上書きして貼り付けます★★★
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // ボタンや画面の要素を取得
+    const nameInput = document.getElementById('username');
+    const btnToyonaka = document.getElementById('btn-toyonaka');
+    const btnSuita = document.getElementById('btn-suita');
+    const btnLeave = document.getElementById('btn-leave');
+
+    // チェックイン・チェックアウト処理
+    async function updateStatus(location) {
+      const name = nameInput.value.trim();
+      if (!name) { alert("名前を入力してください！"); return; }
+      
+      await setDoc(doc(db, "members", name), {
+        name: name,
+        location: location,
+        updatedAt: new Date().toISOString() // 現在時刻を記録
+      });
+      
+      // 帰るボタンを押した場合は名前をリセット（お好みで）
+      if(location === 'none') nameInput.value = '';
+    }
+
+    btnToyonaka.addEventListener('click', () => updateStatus('toyonaka'));
+    btnSuita.addEventListener('click', () => updateStatus('suita'));
+    btnLeave.addEventListener('click', () => updateStatus('none'));
+
+    // データベースの変更をリアルタイムで監視＆0時リセット処理
+    onSnapshot(collection(db, "members"), (snapshot) => {
+      const listToyonaka = document.getElementById('list-toyonaka');
+      const listSuita = document.getElementById('list-suita');
+      listToyonaka.innerHTML = ''; listSuita.innerHTML = '';
+      
+      let tCount = 0, sCount = 0;
+
+      // 今日の午前0時の時刻データを取得（これより古い記録は非表示にする）
+      const todayZero = new Date();
+      todayZero.setHours(0, 0, 0, 0);
+
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const updatedAt = new Date(data.updatedAt);
+
+        // 🌟 0時リセットの魔法：更新時刻が今日の0時より前なら無視する
+        if (updatedAt < todayZero) return;
+
+        const timeString = `${updatedAt.getHours()}:${String(updatedAt.getMinutes()).padStart(2, '0')}`;
+        const li = document.createElement('li');
+        li.textContent = `${data.name} (更新: ${timeString})`;
+
+        if (data.location === 'toyonaka') {
+          listToyonaka.appendChild(li);
+          tCount++;
+        } else if (data.location === 'suita') {
+          listSuita.appendChild(li);
+          sCount++;
+        }
+      });
+
+      document.getElementById('count-toyonaka').textContent = tCount;
+      document.getElementById('count-suita').textContent = sCount;
+    });
+  </script>
+</body>
+</html>
