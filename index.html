@@ -7,25 +7,28 @@
   <style>
     body { font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; }
     .input-area { background: #f0f0f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-    input { padding: 8px; font-size: 16px; width: 80%; }
-    button { padding: 10px 15px; font-size: 16px; margin: 5px; cursor: pointer; border: none; border-radius: 5px; }
+    input { padding: 10px; font-size: 16px; width: 90%; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button { padding: 10px 15px; font-size: 16px; margin: 5px 5px 5px 0; cursor: pointer; border: none; border-radius: 5px; }
     .btn-toyonaka { background: #4CAF50; color: white; }
     .btn-suita { background: #2196F3; color: white; }
     .btn-leave { background: #f44336; color: white; }
     .campus-card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
     .campus-card h2 { margin-top: 0; font-size: 20px; }
     ul { list-style-type: none; padding-left: 0; }
-    li { background: #eef; margin: 5px 0; padding: 8px; border-radius: 4px; }
+    li { background: #eef; margin: 8px 0; padding: 10px; border-radius: 6px; line-height: 1.4; }
+    .memo-text { font-size: 14px; color: #555; display: block; margin-top: 4px; }
+    .time-text { font-size: 12px; color: #888; }
   </style>
 </head>
 <body>
   <h1>📍 練習場所チェックイン</h1>
   
   <div class="input-area">
-    <p>あなたの名前を入力してください</p>
-    <input type="text" id="username" placeholder="例: 阪大 太郎">
+    <p style="margin-top:0; font-weight:bold;">チェックイン情報</p>
+    <input type="text" id="username" placeholder="名前 (例: 阪大 太郎)">
+    <input type="text" id="usermemo" placeholder="メモ (例: 18時まで練習、ドラム)">
     
-    <div style="margin-top: 15px;">
+    <div>
       <button class="btn-toyonaka" id="btn-toyonaka">豊中に来た</button>
       <button class="btn-suita" id="btn-suita">吹田に来た</button>
       <button class="btn-leave" id="btn-leave">帰る</button>
@@ -42,27 +45,25 @@
     <ul id="list-suita"></ul>
   </div>
 
-  <!-- Firebaseを読み込むスクリプト -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getFirestore, collection, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-    // ★★★ここにFirebaseの「firebaseConfig」を上書きして貼り付けます★★★
     const firebaseConfig = {
-  apiKey: "AIzaSyAbb-HSEJp1LHNli-4xFzslP9CScw5KNuA",
-  authDomain: "patiocheckin-b3859.firebaseapp.com",
-  projectId: "patiocheckin-b3859",
-  storageBucket: "patiocheckin-b3859.firebasestorage.app",
-  messagingSenderId: "968861594943",
-  appId: "1:968861594943:web:48e50fb1bd68565b988f8a",
-  measurementId: "G-VRK16M8ML5"
-};
+      apiKey: "AIzaSyAbb-HSEJp1LHNli-4xFzslP9CScw5KNuA",
+      authDomain: "patiocheckin-b3859.firebaseapp.com",
+      projectId: "patiocheckin-b3859",
+      storageBucket: "patiocheckin-b3859.firebasestorage.app",
+      messagingSenderId: "968861594943",
+      appId: "1:968861594943:web:48e50fb1bd68565b988f8a",
+      measurementId: "G-VRK16M8ML5"
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // ボタンや画面の要素を取得
     const nameInput = document.getElementById('username');
+    const memoInput = document.getElementById('usermemo');
     const btnToyonaka = document.getElementById('btn-toyonaka');
     const btnSuita = document.getElementById('btn-suita');
     const btnLeave = document.getElementById('btn-leave');
@@ -70,23 +71,27 @@
     // チェックイン・チェックアウト処理
     async function updateStatus(location) {
       const name = nameInput.value.trim();
+      const memo = memoInput.value.trim();
+
       if (!name) { alert("名前を入力してください！"); return; }
       
       await setDoc(doc(db, "members", name), {
         name: name,
+        memo: memo, // メモ情報も保存
         location: location,
-        updatedAt: new Date().toISOString() // 現在時刻を記録
+        updatedAt: new Date().toISOString()
       });
       
-      // 帰るボタンを押した場合は名前をリセット（お好みで）
-      if(location === 'none') nameInput.value = '';
+      if(location === 'none') {
+        memoInput.value = ''; // 帰るボタンを押したときはメモをクリア
+      }
     }
 
     btnToyonaka.addEventListener('click', () => updateStatus('toyonaka'));
     btnSuita.addEventListener('click', () => updateStatus('suita'));
     btnLeave.addEventListener('click', () => updateStatus('none'));
 
-    // データベースの変更をリアルタイムで監視＆0時リセット処理
+    // リアルタイム更新＆表示処理
     onSnapshot(collection(db, "members"), (snapshot) => {
       const listToyonaka = document.getElementById('list-toyonaka');
       const listSuita = document.getElementById('list-suita');
@@ -94,7 +99,6 @@
       
       let tCount = 0, sCount = 0;
 
-      // 今日の午前0時の時刻データを取得（これより古い記録は非表示にする）
       const todayZero = new Date();
       todayZero.setHours(0, 0, 0, 0);
 
@@ -102,12 +106,18 @@
         const data = doc.data();
         const updatedAt = new Date(data.updatedAt);
 
-        // 🌟 0時リセットの魔法：更新時刻が今日の0時より前なら無視する
+        // 0時リセット処理（今日の0時より前のデータは表示しない）
         if (updatedAt < todayZero) return;
 
         const timeString = `${updatedAt.getHours()}:${String(updatedAt.getMinutes()).padStart(2, '0')}`;
+        
+        // リスト項目のデザイン組み立て
         const li = document.createElement('li');
-        li.textContent = `${data.name} (更新: ${timeString})`;
+        let htmlContent = `<strong>${data.name}</strong> <span class="time-text">(${timeString}更新)</span>`;
+        if (data.memo) {
+          htmlContent += `<span class="memo-text">💬 ${data.memo}</span>`;
+        }
+        li.innerHTML = htmlContent;
 
         if (data.location === 'toyonaka') {
           listToyonaka.appendChild(li);
